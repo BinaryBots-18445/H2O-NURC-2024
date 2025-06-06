@@ -381,6 +381,11 @@ float joyScale(int stick) {
   return (float)(val) * 32768. / (32768.-DEADBAND)/128.; // scale out the deadband
 }
 
+float mapfloat(long x, long in_min, long in_max, long out_min, long out_max)
+{
+  return (float)(x - in_min) * (out_max - out_min) / (float)(in_max - in_min) + out_min;
+}
+
 // Scale trigger value from 10 bit int to float (it's different from joysticks)
 float trigScale(int stick) {
   return (float)(stick)/1024.;
@@ -389,30 +394,43 @@ float trigScale(int stick) {
 // read gamepad and populate the control variables with current readings
 void translate_response_to_controls() {
   for (int joystick_index = 0; joystick_index < COUNT_JOYSTICKS; joystick_index++) {
+    //Serial.printf("Index %d Available? %d\n", joystick_index, joysticks[joystick_index].available());
   // read the xbox controller over USB
     if (joysticks[joystick_index].available()) {
       // all the buttons are in one word
       butts = joysticks[joystick_index].getButtons();
-   //   Serial.printf("micros %9d  buttons %04X", nextLoopMicros, butts);
+      Serial.printf("micros %9d  index %d buttons %04X", nextLoopMicros, joystick_index, butts);
       // the first six axes are what we need
       for (uint8_t i = 0; i<6; i++) {
         axes[i] = joysticks[joystick_index].getAxis(i);
-  //      Serial.printf(" %6d", axes[i]);
+        Serial.printf(" (#%d):%d", i, axes[i]);
       }
-  //    Serial.println();
+      Serial.println();
       // Read all the button bits into an array for ease of access
       for (int i=0;i<16;i++) {
         buttons[i] = (butts>>i)&0x0001;
       }
   
       // XBox One stick reading, scales to -1.0 .. +1.0 range
-      analogs[LJoyX] = joyScale(axes[0]);
-      analogs[LJoyY] = joyScale(axes[1]);
-      analogs[RJoyX] = joyScale(axes[2]);
-      analogs[RJoyY] = joyScale(axes[5]);
-      analogs[LTrig] = trigScale(axes[3]);
-      analogs[RTrig] = trigScale(axes[4]);
-  
+
+      //THIS IS OG CODE AND HAS A BUG WITH JOYSCALE analogs[LJoyX] = joyScale(axes[0]); // There is a bug with joyScale
+      analogs[LJoyX] = mapfloat(axes[0], 0, 255, -1, +1); // JOSEPH TEST THIS SHOULD BE RIGHT, scales input from int 0-255 to -1 to +1 float
+      Serial.printf("aLX %.3f rLX %d\n", analogs[LJoyX],axes[0]);
+      
+      //analogs[LJoyY] = joyScale(axes[1]);
+      //analogs[RJoyX] = joyScale(axes[2]);
+      //analogs[RJoyY] = joyScale(axes[5]);
+      //analogs[LTrig] = trigScale(axes[3]);
+      //analogs[RTrig] = trigScale(axes[4]);
+      analogs[LJoyY] = mapfloat(axes[1], 0, 255, -1, +1);
+      analogs[RJoyX] = mapfloat(axes[2], 0, 255, -1, +1);
+      analogs[RJoyY] = mapfloat(axes[5], 0, 255, -1, +1);
+      analogs[LTrig] = 0;
+      analogs[RTrig] = 0;
+
+
+
+
         // calculate virtual stick position for each synthesized axis from button pair
       for (int i=6; i<NANALOG; i++) {
         float val = analogs[i];  // get current position
@@ -423,9 +441,10 @@ void translate_response_to_controls() {
         // if (buttons[zero_button[i]]) val = 0.;  // reset to midpoint
         analogs[i] = val;   // update it as calculated
       }
-      if (0) {
+      if (1) {
+
         for (int i=0;i<NANALOG;i++) {
-          Serial.printf(" %6.3f", analogs[i]);
+          Serial.printf("Analog %d: %6.3f\n", i, analogs[i]);
         }
         Serial.println();
       }
@@ -485,6 +504,7 @@ void build_command_msg(char *msg) {
   for (i=0;i<NMOTORS;i++) {
     checksum += motors[i];
     msg += sprintf(msg, "%02X", motors[i]);
+    Serial.printf("Motor: %d, %d\n", i, motors[i]);
   }
 
   *msg++ = 'P';
@@ -623,13 +643,13 @@ void loop() {
     translate_response_to_controls();  // Read the gamepad into analogs, buttons
     translate_controls_to_commands();  // make ROV motion data from that
     build_command_msg(command_msg);
-  //  Serial.print(command_msg);        // show commands to monitor
+    Serial.println("s: " + String(command_msg));        // show commands to monitor
     Serial1.print(command_msg);        // give commands to ROV
   }
   // The reply message is parsed as soon as it's received
   // And the LCD status is redrawn
   if (gotInString) {
-    Serial.print(reply_msg);        // give commands to ROV
+    Serial.print("r: " + String(reply_msg));        // give commands to ROV
     gotInString = false;
     parse_reply_msg(reply_msg);    // update telemetry if it's valid
     display_all_telems();          // display telemetry on the LCD
