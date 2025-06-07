@@ -135,13 +135,18 @@ float motDirs[NMOTORS];
 // Motor gain trims
 // Adjust these to get it to drive straight
 // and to have the desired steering and strafing behavior
-float DriveGainL  = 1.00;
-float DriveGainR  = 0.92;
-float SteerGain   = 0.60;
-float DiveGainL   = 1.00;
-float DiveGainR   = 1.00;
-float StrafeGain  = 1.00;
-
+//float DriveGainL  = 1.00;
+//float DriveGainR  = 0.92;
+//float SteerGain   = 0.60;
+//float DiveGainL   = 1.00;
+//float DiveGainR   = 1.00;
+//float StrafeGain  = 1.00;
+float DriveGainL  = 0.50;
+float DriveGainR  = 0.60;
+float SteerGain   = -0.60;
+float DiveGainL   = 0.60;
+float DiveGainR   = 0.50;
+float StrafeGain  = 0.50;
 
 // make the fast LCD screen object - uses RW to allow readback of screen contents
 LiquidCrystalFast lcd(LCD_RS, LCD_RW, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
